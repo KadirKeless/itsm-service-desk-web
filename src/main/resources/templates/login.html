@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITSM — Giriş Yap</title>
+    <link rel="icon" type="image/png" th:href="@{/images/icon.png}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css}">
+    <script th:src="@{/js/toast.js}" defer></script>
+</head>
+<body class="auth-page auth-login-page">
+
+<main class="auth-split">
+    <aside class="auth-split-visual" aria-hidden="true">
+        <img th:src="@{/images/log-in.png}" alt="ITSM — Hizmet ve Yönetim Sistemleri" decoding="async">
+    </aside>
+
+    <section class="auth-split-panel">
+        <div class="auth-split-panel-inner">
+            <section class="auth-card" aria-labelledby="loginTitle">
+                <header class="auth-header">
+                    <h1 id="loginTitle">Sisteme Giriş</h1>
+                    <p>Devam etmek için bilgilerinizi giriniz</p>
+                </header>
+
+                <div id="flash-messages-data" hidden
+                     th:attr="data-success=${successMessage},data-error=${errorMessage}"></div>
+
+                <form th:action="@{/login}" method="post" th:object="${loginDto}" novalidate
+                      autocomplete="off">
+                    <div class="form-group">
+                        <label for="email">E-posta Adresi</label>
+                        <input id="email"
+                               type="email"
+                               name="email"
+                               th:field="*{email}"
+                               placeholder="ornek@sirket.com"
+                               autocomplete="off"
+                               autocapitalize="off"
+                               spellcheck="false"
+                               required>
+                        <small class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Şifre</label>
+                        <input id="password"
+                               type="password"
+                               name="password"
+                               th:field="*{password}"
+                               placeholder="••••••••"
+                               autocomplete="new-password"
+                               required>
+                        <small class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></small>
+
+                        <label class="show-pass">
+                            <input type="checkbox" id="togglePass">
+                            <span>Şifreyi göster</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Giriş Yap</button>
+
+                    <p class="auth-footer">
+                        Hesabınız yok mu?
+                        <a th:href="@{/register}">Kayıt Olun</a>
+                    </p>
+                </form>
+            </section>
+
+            <p class="auth-copyright">&copy; <span th:text="${T(java.time.Year).now()}">2026</span> ITSM. Tüm hakları saklıdır.</p>
+        </div>
+    </section>
+</main>
+
+<script>
+    (function () {
+        const emailField = document.getElementById('email');
+        const passField  = document.getElementById('password');
+        const toggle     = document.getElementById('togglePass');
+
+        // Tarayicinin (Chrome/Edge) autofill'i tetiklemesini engellemek icin
+        // sayfa yuklenir yuklenmez ve kucuk bir gecikme sonrasinda alanlari
+        // temizliyoruz. (HTML attribute'leri tek basina yeterli olmuyor.)
+        function clearFields() {
+            if (emailField && !emailField.matches(':focus')) emailField.value = '';
+            if (passField && !passField.matches(':focus'))  passField.value  = '';
+        }
+        window.addEventListener('pageshow', clearFields);
+        setTimeout(clearFields, 60);
+        setTimeout(clearFields, 250);
+
+        if (toggle && passField) {
+            toggle.addEventListener('change', () => {
+                passField.type = toggle.checked ? 'text' : 'password';
+            });
+        }
+    })();
+</script>
+</body>
+</html>

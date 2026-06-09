@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Yeni Talep')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar('ticket-new')}"></nav>
+
+<main class="app-main">
+    <header class="page-header">
+        <h1>Yeni Destek Talebi</h1>
+        <p>Sorununuzu detaylı bir şekilde açıklayınız.</p>
+    </header>
+
+    <section class="form-card">
+        <form id="createTicketForm" th:action="@{/tickets/new}" method="post" th:object="${createTicketDto}" novalidate>
+
+            <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error" role="alert">
+                <ul style="margin: 0; padding-left: 18px;">
+                    <li th:each="err : ${#fields.globalErrors()}" th:text="${err}">Hata</li>
+                </ul>
+            </div>
+
+            <div class="form-group">
+                <label for="title">Konu Başlığı <span class="hint-inline">(5-100 karakter)</span></label>
+                <input id="title"
+                       type="text"
+                       th:field="*{title}"
+                       placeholder="Sorununuzu özetleyen bir başlık yazınız"
+                       maxlength="100"
+                       autocomplete="off">
+                <small class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></small>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Detaylı Açıklama <span class="hint-inline">(10-2000 karakter)</span></label>
+                <textarea id="description"
+                          th:field="*{description}"
+                          rows="6"
+                          maxlength="2000"
+                          placeholder="Sorununuzu detaylı bir şekilde açıklayınız. Hata mesajı varsa ekleyiniz."
+                          disabled></textarea>
+                <small class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}"></small>
+            </div>
+
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label for="targetDepartmentId">İlgili Departman</label>
+                    <select id="targetDepartmentId" th:field="*{targetDepartmentId}" disabled>
+                        <option value="">Departman seçiniz...</option>
+                        <option th:each="dept : ${departments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.departmentName}">Departman</option>
+                    </select>
+                    <small class="field-error" th:if="${#fields.hasErrors('targetDepartmentId')}" th:errors="*{targetDepartmentId}"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="categoryId">Kategori</label>
+                    <select id="categoryId" th:field="*{categoryId}" disabled>
+                        <option value="">Önce departman seçiniz</option>
+                    </select>
+                    <small class="field-error" th:if="${#fields.hasErrors('categoryId')}" th:errors="*{categoryId}"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="priorityId">Öncelik</label>
+                    <select id="priorityId" th:field="*{priorityId}" disabled>
+                        <option value="">Öncelik seçiniz...</option>
+                        <option th:each="prio : ${priorities}"
+                                th:value="${prio.id}"
+                                th:text="${prio.priorityName}">Öncelik</option>
+                    </select>
+                    <small class="field-error" th:if="${#fields.hasErrors('priorityId')}" th:errors="*{priorityId}"></small>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" id="submitTicketBtn" class="btn-primary" disabled>Talebi Gönder</button>
+            </div>
+        </form>
+    </section>
+</main>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    (function () {
+        const form = document.getElementById('createTicketForm');
+        const titleInput = document.getElementById('title');
+        const descriptionInput = document.getElementById('description');
+        const deptSelect = document.getElementById('targetDepartmentId');
+        const catSelect = document.getElementById('categoryId');
+        const prioritySelect = document.getElementById('priorityId');
+        const submitBtn = document.getElementById('submitTicketBtn');
+
+        const preselectedCategoryId = catSelect.value || /*[[${createTicketDto.categoryId}]]*/ '';
+        const preselectedDeptId = deptSelect.value || '';
+
+        let categoriesLoading = false;
+        let categoriesReady = false;
+
+        function trimLen(value) {
+            return (value || '').trim().length;
+        }
+
+        function titleValid() {
+            return trimLen(titleInput.value) >= 5;
+        }
+
+        function descriptionValid() {
+            return trimLen(descriptionInput.value) >= 10;
+        }
+
+        function departmentValid() {
+            return deptSelect.value !== '';
+        }
+
+        function categoryValid() {
+            return catSelect.value !== '';
+        }
+
+        function priorityValid() {
+            return prioritySelect.value !== '';
+        }
+
+        function canEnableCategory() {
+            return descriptionValid() && departmentValid() && categoriesReady && !categoriesLoading;
+        }
+
+        function updateFormState() {
+            descriptionInput.disabled = !titleValid();
+
+            if (!descriptionValid()) {
+                deptSelect.disabled = true;
+                catSelect.disabled = true;
+                prioritySelect.disabled = true;
+            } else {
+                deptSelect.disabled = false;
+                catSelect.disabled = !canEnableCategory();
+                prioritySelect.disabled = !(canEnableCategory() && categoryValid());
+            }
+
+            submitBtn.disabled = !(
+                titleValid()
+                && descriptionValid()
+                && departmentValid()
+                && categoryValid()
+                && priorityValid()
+            );
+        }
+
+        async function loadCategories(deptId, selectAfterLoad) {
+            categoriesLoading = true;
+            categoriesReady = false;
+            catSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+            catSelect.disabled = true;
+            prioritySelect.value = '';
+            updateFormState();
+
+            if (!deptId) {
+                catSelect.innerHTML = '<option value="">Önce departman seçiniz</option>';
+                categoriesLoading = false;
+                updateFormState();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/lookup/departments/' + deptId + '/categories', {
+                    headers: { Accept: 'application/json' }
+                });
+                if (!res.ok) {
+                    throw new Error('Kategori listesi alınamadı (' + res.status + ')');
+                }
+                const items = await res.json();
+                if (items.length === 0) {
+                    catSelect.innerHTML = '<option value="">Bu departmana ait kategori yok</option>';
+                    categoriesReady = false;
+                } else {
+                    catSelect.innerHTML = '<option value="">Kategori seçiniz...</option>';
+                    items.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.id;
+                        opt.textContent = c.name;
+                        if (selectAfterLoad && String(c.id) === String(selectAfterLoad)) {
+                            opt.selected = true;
+                        }
+                        catSelect.appendChild(opt);
+                    });
+                    categoriesReady = true;
+                }
+            } catch (err) {
+                catSelect.innerHTML = '<option value="">Kategori yüklenemedi</option>';
+                categoriesReady = false;
+                console.error(err);
+            } finally {
+                categoriesLoading = false;
+                updateFormState();
+            }
+        }
+
+        titleInput.addEventListener('input', updateFormState);
+        descriptionInput.addEventListener('input', updateFormState);
+
+        deptSelect.addEventListener('change', () => {
+            catSelect.value = '';
+            prioritySelect.value = '';
+            loadCategories(deptSelect.value, null);
+        });
+
+        catSelect.addEventListener('change', () => {
+            if (!catSelect.value) {
+                prioritySelect.value = '';
+            }
+            updateFormState();
+        });
+
+        prioritySelect.addEventListener('change', updateFormState);
+
+        form.addEventListener('submit', () => {
+            descriptionInput.disabled = false;
+            deptSelect.disabled = false;
+            catSelect.disabled = false;
+            prioritySelect.disabled = false;
+        });
+
+        if (preselectedDeptId) {
+            loadCategories(preselectedDeptId, preselectedCategoryId);
+        } else {
+            updateFormState();
+        }
+    })();
+    /*]]>*/
+</script>
+</body>
+</html>

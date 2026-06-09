@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{fragments/layout :: head(${pageTitle})}"></head>
+
+<body>
+
+    <nav th:replace="~{fragments/layout :: navbar(${navActive})}"></nav>
+
+    <main class="app-main">
+        <div th:replace="~{fragments/layout :: flash-messages}"></div>
+
+        <header class="page-header page-header-flex">
+            <div>
+                <h1 th:text="${pageTitle}">Talepler</h1>
+                <p th:if="${showCancelActions}">
+                    Sütun başlıklarına tıklayarak sıralayabilirsiniz · Detay için satıra çift tıklayınız · Açık
+                    taleplerinizi iptal edebilirsiniz
+                </p>
+                <p th:unless="${showCancelActions}">
+                    Sütun başlıklarına tıklayarak sıralayabilirsiniz · Detay için satıra çift tıklayınız · Tabloda arama
+                    yapabilirsiniz
+                </p>
+            </div>
+            <div>
+                <span class="page-header-count" id="ticketsTableCount" th:text="|Toplam: ${tickets.size()}|">Toplam:
+                    0</span>
+            </div>
+        </header>
+
+        <section th:if="${tickets.isEmpty()}" class="empty-state">
+            <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+            <p th:text="${emptyMessage}">Henüz talep yok.</p>
+            <a th:href="@{/tickets/new}" class="btn-primary" sec:authorize="!hasRole('ADMIN')">Yeni Talep Oluştur</a>
+        </section>
+
+        <section th:unless="${tickets.isEmpty()}" class="data-table-wrapper">
+            <table class="data-table sortable-table paginated-table" id="ticketsTable"
+                data-pagination-count="ticketsTableCount">
+                <thead>
+                    <tr>
+                        <th data-sort="number" style="width:60px;">#</th>
+                        <th data-sort="string">Başlık</th>
+                        <th data-sort="string">Talep Eden</th>
+                        <th data-sort="string">Atanan</th>
+                        <th data-sort="string">Departman</th>
+                        <th data-sort="priority">Öncelik</th>
+                        <th data-sort="status">Durum</th>
+                        <th data-sort="date">Tarih</th>
+                        <th th:if="${showCancelActions}" class="table-actions-col">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="t : ${tickets}" th:attr="data-href=@{/tickets/{id}(id=${t.id}, from=${listSource})}"
+                        class="clickable-row">
+                        <td th:text="${t.id}">1</td>
+                        <td>
+                            <span class="ticket-title" th:text="${t.title}">Başlık</span>
+                        </td>
+                        <td th:text="${t.requester.fullName}">Talep Eden</td>
+                        <td th:text="${t.assignedUser != null ? t.assignedUser.fullName : '—'}">—</td>
+                        <td th:text="${t.targetDepartment.departmentName}">Departman</td>
+                        <td th:attr="data-sort-value=${t.priority.levelWeight}">
+                            <span class="badge" th:classappend="|priority-${t.priority.levelWeight}|"
+                                th:text="${t.priority.priorityName}">Öncelik</span>
+                        </td>
+                        <td th:attr="data-sort-value=${t.status.id}">
+                            <span class="badge" th:classappend="|status-${t.status.id}|"
+                                th:text="${t.status.statusName}">Durum</span>
+                        </td>
+                        <td th:attr="data-sort-value=${#temporals.format(t.createdAt,'yyyy-MM-dd HH:mm')}"
+                            th:text="${#temporals.format(t.createdAt, 'dd.MM.yyyy HH:mm')}">--.--.----</td>
+                        <td th:if="${showCancelActions}" class="table-row-actions">
+                            <form th:if="${t.requester.id == currentUserId and t.status.id != 3 and t.status.id != 4}"
+                                th:action="@{/tickets/{id}/cancel(id=${t.id})}" method="post"
+                                class="cancel-ticket-form inline-form">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="icon-btn icon-btn-danger"
+                                    th:attr="data-ticket-title=${t.title}" title="Talebi İptal Et"
+                                    aria-label="Talebi iptal et">
+                                    <i class="bi bi-x-circle" aria-hidden="true"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <div th:if="${showCancelActions}" id="confirmModal" class="modal-overlay confirm-modal-overlay"
+        style="display:none;">
+        <div class="modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+            <h3 id="confirmModalTitle">Talebi İptal Et</h3>
+            <p id="confirmModalMessage"></p>
+            <div id="confirmModalError" class="confirm-modal-error" hidden></div>
+            <div class="form-actions confirm-modal-actions" id="confirmModalActions">
+                <button type="button" class="btn-secondary" id="confirmModalCancel">Hayır</button>
+                <button type="button" class="btn-primary" id="confirmModalConfirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.clickable-row').forEach(row => {
+            row.addEventListener('dblclick', () => {
+                const href = row.getAttribute('data-href');
+                if (href) window.location.href = href;
+            });
+            row.style.cursor = 'pointer';
+        });
+
+        document.querySelectorAll('.table-row-actions').forEach(cell => {
+            cell.addEventListener('click', (e) => e.stopPropagation());
+            cell.addEventListener('dblclick', (e) => e.stopPropagation());
+        });
+    </script>
+
+    <script th:src="@{/js/table-pagination.js}"></script>
+    <script th:src="@{/js/table-sort.js}"></script>
+    <script th:if="${showCancelActions}" th:src="@{/js/confirm-modal.js}"></script>
+    <script th:if="${showCancelActions}" th:src="@{/js/ticket-cancel.js}"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Talep Detayı')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar(${navActive})}"></nav>
+
+<main class="app-main">
+    <div th:replace="~{fragments/layout :: flash-messages}"></div>
+
+    <p style="margin-bottom: 12px;">
+        <a th:href="${backUrl}" class="btn-link" th:text="|← ${backLabel}|">&larr; Listeye dön</a>
+    </p>
+
+    <div class="ticket-detail-top"
+         th:classappend="${canDelete or (!isClosed and (canAssign or canChangeStatus))} ? ' ticket-detail-top--with-mgmt' : ''">
+
+        <section class="form-card ticket-detail-card ticket-detail-main">
+            <header class="ticket-detail-header">
+                <h2 th:text="|#${ticket.id} — ${ticket.title}|">#1 — Başlık</h2>
+                <span class="badge"
+                      th:classappend="|status-${ticket.status.id}|"
+                      th:text="${ticket.status.statusName}">Durum</span>
+            </header>
+
+            <div class="ticket-detail-grid">
+                <div>
+                    <span class="ticket-meta-label">Talep Eden</span>
+                    <span class="ticket-meta-value"
+                          th:text="${ticket.requester.department != null
+                                    ? ticket.requester.fullName + ' — ' + ticket.requester.department.departmentName
+                                    : ticket.requester.fullName}">—</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Hedef Departman</span>
+                    <span class="ticket-meta-value" th:text="${ticket.targetDepartment.departmentName}">—</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Kategori</span>
+                    <span class="ticket-meta-value" th:text="${ticket.category.categoryName}">—</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Öncelik</span>
+                    <span class="badge"
+                          th:classappend="|priority-${ticket.priority.levelWeight}|"
+                          th:text="${ticket.priority.priorityName}">Öncelik</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Atanan Kişi</span>
+                    <span class="ticket-meta-value"
+                          th:text="${ticket.assignedUser != null ? ticket.assignedUser.fullName : 'Henüz atanmadı'}">—</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Oluşturulma</span>
+                    <span class="ticket-meta-value"
+                          th:text="${#temporals.format(ticket.createdAt, 'dd.MM.yyyy HH:mm')}">--</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Son Güncelleme</span>
+                    <span class="ticket-meta-value"
+                          th:text="${ticket.updatedAt != null and !ticket.updatedAt.equals(ticket.createdAt)
+                                    ? #temporals.format(ticket.updatedAt, 'dd.MM.yyyy HH:mm')
+                                    : 'Henüz işleme alınmadı'}">--</span>
+                </div>
+                <div>
+                    <span class="ticket-meta-label">Kapatılma</span>
+                    <span class="ticket-meta-value"
+                          th:text="${ticket.closedAt != null ? #temporals.format(ticket.closedAt, 'dd.MM.yyyy HH:mm') : '—'}">—</span>
+                </div>
+            </div>
+
+            <div class="ticket-description-block">
+                <span class="ticket-meta-label">Açıklama</span>
+                <pre class="ticket-description" th:text="${ticket.description}">...</pre>
+            </div>
+        </section>
+
+        <aside class="form-card ticket-management-card"
+               th:if="${canDelete or (!isClosed and (canAssign or canChangeStatus))}">
+            <h3 class="ticket-management-title">Yönetim İşlemleri</h3>
+
+            <div th:if="${canAssign and !isClosed}" class="management-row">
+                <form th:action="@{/tickets/{id}/assign(id=${ticket.id})}" method="post" class="inline-form inline-form-stack">
+                    <label for="assigneeId">Çalışana Ata</label>
+                    <select id="assigneeId" name="assigneeId" required
+                            th:disabled="${assignableEmployees.isEmpty()}"
+                            th:attr="data-initial=${ticket.assignedUser != null ? ticket.assignedUser.id : ''}">
+                        <option th:if="${ticket.assignedUser == null}" value="" selected disabled hidden>Seçiniz</option>
+                        <option th:if="${ticket.assignedUser != null}"
+                                th:value="${ticket.assignedUser.id}"
+                                th:text="${ticket.assignedUser.fullName}"
+                                selected>Atanan</option>
+                        <option th:each="emp : ${assignableEmployees}"
+                                th:if="${ticket.assignedUser == null or emp.id != ticket.assignedUser.id}"
+                                th:value="${emp.id}" th:text="${emp.fullName}">Ad Soyad</option>
+                    </select>
+                    <button type="submit" id="assignSubmitBtn" class="btn-secondary btn-block"
+                            th:disabled="${assignableEmployees.isEmpty()}">Kaydet</button>
+                    <small th:if="${assignableEmployees.isEmpty()}" class="hint">
+                        Bu departmanda atanabilecek aktif çalışan yok.
+                    </small>
+                </form>
+            </div>
+
+            <div th:if="${canChangeStatus and !isClosed}" class="management-row">
+                <form th:action="@{/tickets/{id}/status(id=${ticket.id})}" method="post" class="inline-form inline-form-stack">
+                    <label for="statusId">Durumu Güncelle</label>
+                    <select id="statusId" name="statusId" required
+                            th:attr="data-initial=${ticket.status.id}">
+                        <option th:value="${ticket.status.id}"
+                                th:text="${ticket.status.statusName}"
+                                selected>Mevcut</option>
+                        <option th:each="s : ${statusOptions}"
+                                th:if="${s.id != ticket.status.id}"
+                                th:value="${s.id}" th:text="${s.statusName}">Durum</option>
+                    </select>
+                    <button type="submit" id="statusSubmitBtn" class="btn-secondary btn-block" disabled>Güncelle</button>
+                </form>
+            </div>
+
+            <div th:if="${canDelete}" class="management-row">
+                <form th:action="@{/tickets/{id}/delete(id=${ticket.id})}" method="post" class="inline-form inline-form-stack"
+                      onsubmit="return confirm('Bu talep ve tüm yanıtları kalıcı olarak silinecek! Devam etmek istiyor musunuz?');">
+                    <button type="submit" class="btn-danger btn-block">Talebi Sil</button>
+                </form>
+            </div>
+        </aside>
+    </div>
+
+    <section class="form-card replies-section">
+        <h3 th:text="|Yanıtlar (${replies.size()})|">Yanıtlar (0)</h3>
+
+        <div th:if="${replies.isEmpty()}" class="empty-state-inline">
+            Henüz yanıt bulunmuyor.
+        </div>
+
+        <ul class="reply-list" th:unless="${replies.isEmpty()}">
+            <li th:each="r : ${replies}" class="reply-card">
+                <header class="reply-header">
+                    <div>
+                        <strong th:text="${r.user.fullName}">Kullanıcı</strong>
+                        <span class="reply-date"
+                              th:text="${#temporals.format(r.createdAt, 'dd.MM.yyyy HH:mm')}">--</span>
+                    </div>
+                    <div class="reply-actions"
+                         th:if="${isAdmin or (currentUser.id == r.user.id and !isClosed)}">
+                        <button type="button"
+                                class="icon-btn icon-btn-edit reply-edit-btn"
+                                th:attr="data-reply-id=${r.id},data-message=${r.message}"
+                                title="Düzenle" aria-label="Yorumu düzenle">
+                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                        </button>
+                        <form th:action="@{/tickets/{id}/reply/{rid}/delete(id=${ticket.id}, rid=${r.id})}"
+                              method="post" class="inline-form"
+                              onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?');">
+                            <button type="submit" class="icon-btn icon-btn-danger"
+                                    title="Sil" aria-label="Yorumu sil">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </div>
+                </header>
+                <p class="reply-message" th:text="${r.message}">Mesaj</p>
+            </li>
+        </ul>
+    </section>
+
+    <section class="form-card" th:if="${!isClosed}">
+        <h3>Yanıt Yaz</h3>
+        <form th:action="@{/tickets/{id}/reply(id=${ticket.id})}" th:object="${replyDto}" method="post">
+            <div class="form-group">
+                <textarea th:field="*{message}" rows="3"
+                          placeholder="Yanıtınızı buraya yazınız..."></textarea>
+                <span class="field-error" th:if="${#fields.hasErrors('message')}"
+                      th:errors="*{message}"></span>
+            </div>
+            <button type="submit" class="btn-primary">Yanıt Gönder</button>
+        </form>
+    </section>
+
+    <section class="form-card alert alert-warning" th:if="${isClosed}">
+        Bu talep kapatılmıştır. Yeni yanıt eklenemez.
+    </section>
+</main>
+
+<div id="editReplyModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+        <h3>Yorumu Düzenle</h3>
+        <form id="editReplyForm" method="post">
+            <div class="form-group">
+                <textarea id="editReplyMessage" name="message" rows="4" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditModal()">İptal</button>
+                <button type="submit" class="btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const TICKET_ID = /*[[${ticket.id}]]*/ 0;
+
+    // CSRF tokenini global meta'dan veya gizli alandan oku
+    function getCsrf() {
+        const tokenInput = document.querySelector('input[name="_csrf"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    document.querySelectorAll('.reply-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const replyId = btn.dataset.replyId;
+            const message = btn.dataset.message;
+            const modal = document.getElementById('editReplyModal');
+            const form = document.getElementById('editReplyForm');
+            form.action = `/tickets/${TICKET_ID}/reply/${replyId}/edit`;
+            // Mevcut CSRF token'i hidden input olarak ekle
+            let csrfInput = form.querySelector('input[name="_csrf"]');
+            if (!csrfInput) {
+                csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_csrf';
+                form.appendChild(csrfInput);
+            }
+            csrfInput.value = getCsrf();
+            document.getElementById('editReplyMessage').value = message;
+            modal.style.display = 'flex';
+        });
+    });
+
+    function closeEditModal() {
+        document.getElementById('editReplyModal').style.display = 'none';
+    }
+
+    function bindMgmtSelect(selectId, buttonId) {
+        const select = document.getElementById(selectId);
+        const button = document.getElementById(buttonId);
+        if (!select || !button) return;
+        const initialValue = select.dataset.initial ?? '';
+        function sync() {
+            button.disabled = select.disabled || select.value === initialValue;
+        }
+        select.addEventListener('change', sync);
+        sync();
+    }
+    bindMgmtSelect('assigneeId', 'assignSubmitBtn');
+    bindMgmtSelect('statusId', 'statusSubmitBtn');
+    /*]]>*/
+</script>
+
+</body>
+</html>

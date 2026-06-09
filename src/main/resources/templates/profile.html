@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Profilim')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar('profile')}"></nav>
+
+<main class="app-main profile-main">
+    <div th:replace="~{fragments/layout :: flash-messages}"></div>
+
+    <header class="page-header profile-page-header">
+        <h1>Profilim</h1>
+        <p>Kişisel bilgilerinizi görüntüleyebilir ve şifrenizi değiştirebilirsiniz.</p>
+    </header>
+
+    <div class="profile-page-grid">
+        <section class="form-card profile-info-card">
+            <h3>Hesap Bilgileri</h3>
+            <div class="profile-info-layout">
+                <div class="profile-avatar">
+                    <div class="profile-avatar-slot">
+                        <img id="profileAvatarImg"
+                             class="avatar-img profile-avatar-img"
+                             alt="Profil resmi"
+                             th:src="${hasProfilePicture ? user.profilePictureUrl : null}"
+                             th:attr="hidden=${!hasProfilePicture} ? 'hidden' : null,
+                                      data-server-src=${hasProfilePicture ? user.profilePictureUrl : ''},
+                                      data-has-server=${hasProfilePicture}"/>
+                        <div id="profileAvatarInitials"
+                             class="avatar-circle profile-avatar-initials"
+                             th:text="${user.initials}"
+                             th:attr="hidden=${hasProfilePicture} ? 'hidden' : null">XX</div>
+                    </div>
+
+                    <div th:if="${isAdmin}" class="avatar-edit-controls profile-avatar-actions">
+                        <form th:action="@{/profile/avatar}" method="post" enctype="multipart/form-data"
+                              class="avatar-upload-form">
+                            <div class="avatar-action-row">
+                                <label class="btn-secondary avatar-action-btn btn-file">
+                                    Resim Seç
+                                    <input type="file" id="profilePictureInput" name="profilePicture" required
+                                           accept="image/jpeg,image/png,.jpg,.jpeg,.png"/>
+                                </label>
+                                <button type="submit" class="btn-primary avatar-action-btn">Yükle</button>
+                            </div>
+                        </form>
+                        <form th:if="${hasProfilePicture}" th:action="@{/profile/avatar/remove}" method="post"
+                              class="avatar-remove-form">
+                            <button type="submit" class="btn-secondary avatar-action-btn avatar-action-btn-danger"
+                                    onclick="return confirm('Profil resminiz kaldırılacak. Devam?');">
+                                Resmi Kaldır
+                            </button>
+                        </form>
+                        <p class="hint avatar-action-hint">JPG/PNG · Maks. 5 MB</p>
+                    </div>
+                    <p th:unless="${isAdmin}" class="hint avatar-admin-hint">
+                        Profil resmi sistem yöneticisi tarafından güncellenebilir.
+                    </p>
+                </div>
+                <div class="profile-info">
+                    <div class="profile-row">
+                        <span class="profile-label">AD SOYAD</span>
+                        <span class="profile-value" th:text="${user.fullName}">Ad Soyad</span>
+                    </div>
+                    <div class="profile-row">
+                        <span class="profile-label">E-POSTA ADRESİ</span>
+                        <span class="profile-value" th:text="${user.email}">e@e.com</span>
+                    </div>
+                    <div class="profile-row">
+                        <span class="profile-label">SİSTEM ROLÜ</span>
+                        <span class="profile-value" th:text="${roleName}">—</span>
+                    </div>
+                    <div class="profile-row">
+                        <span class="profile-label">DEPARTMAN</span>
+                        <span class="profile-value" th:text="${departmentName}">—</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="form-card profile-password-card">
+            <h3>Şifre Değiştir</h3>
+            <p class="hint profile-password-hint">En az 8 karakter · Büyük/küçük harf · Rakam · Özel karakter (!@#$ vb.)</p>
+
+            <form th:action="@{/profile/password}" th:object="${passwordDto}" method="post" class="profile-password-form">
+                <div class="form-group">
+                    <label for="curPass">Mevcut Şifreniz</label>
+                    <input id="curPass" type="password" th:field="*{currentPassword}" required/>
+                    <span class="field-error" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></span>
+                </div>
+                <div class="form-group">
+                    <label for="newPass">Yeni Şifre</label>
+                    <input id="newPass" type="password" th:field="*{newPassword}" required/>
+                    <span class="field-error" th:if="${#fields.hasErrors('newPassword')}" th:errors="*{newPassword}"></span>
+                </div>
+                <div class="form-group">
+                    <label for="confPass">Yeni Şifre (Tekrar)</label>
+                    <input id="confPass" type="password" th:field="*{confirmPassword}" required/>
+                    <span class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></span>
+                </div>
+
+                <label class="show-pass">
+                    <input type="checkbox" id="showPassToggle"/> Şifreleri göster
+                </label>
+
+                <div class="form-actions profile-form-actions">
+                    <button type="submit" class="btn-primary">Şifreyi Güncelle</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</main>
+
+<script>
+    document.getElementById('showPassToggle').addEventListener('change', function () {
+        const type = this.checked ? 'text' : 'password';
+        document.getElementById('curPass').type = type;
+        document.getElementById('newPass').type = type;
+        document.getElementById('confPass').type = type;
+    });
+
+    (function initProfileAvatarPreview() {
+        const fileInput = document.getElementById('profilePictureInput');
+        const img = document.getElementById('profileAvatarImg');
+        const initials = document.getElementById('profileAvatarInitials');
+        if (!fileInput || !img || !initials) return;
+
+        let previewUrl = null;
+
+        function clearPreviewUrl() {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
+        }
+
+        function showServerAvatar() {
+            clearPreviewUrl();
+            const hasServer = img.dataset.hasServer === 'true';
+            const serverSrc = img.dataset.serverSrc;
+            if (hasServer && serverSrc) {
+                img.src = serverSrc;
+                img.hidden = false;
+                initials.hidden = true;
+            } else {
+                img.hidden = true;
+                img.removeAttribute('src');
+                initials.hidden = false;
+            }
+        }
+
+        fileInput.addEventListener('change', function () {
+            const file = this.files && this.files[0];
+            if (!file) {
+                showServerAvatar();
+                return;
+            }
+            clearPreviewUrl();
+            previewUrl = URL.createObjectURL(file);
+            img.src = previewUrl;
+            img.hidden = false;
+            initials.hidden = true;
+        });
+    })();
+</script>
+
+</body>
+</html>

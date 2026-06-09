@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITSM — Kayıt Ol</title>
+    <link rel="icon" type="image/png" th:href="@{/images/icon.png}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-page">
+
+<main class="auth-wrapper">
+    <section class="auth-card" aria-labelledby="registerTitle">
+        <header class="auth-header">
+            <h1 id="registerTitle">Hesap Oluştur</h1>
+            <p>Bilgilerinizi girerek sisteme kayıt olun</p>
+        </header>
+
+        <form th:action="@{/register}" method="post" th:object="${registerDto}" novalidate>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="firstName">Ad</label>
+                    <input id="firstName"
+                           type="text"
+                           th:field="*{firstName}"
+                           placeholder="Adınız"
+                           autocomplete="given-name">
+                    <small class="field-error" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="lastName">Soyad</label>
+                    <input id="lastName"
+                           type="text"
+                           th:field="*{lastName}"
+                           placeholder="Soyadınız"
+                           autocomplete="family-name">
+                    <small class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-posta Adresi</label>
+                <input id="email"
+                       type="email"
+                       th:field="*{email}"
+                       placeholder="ornek@sirket.com"
+                       autocomplete="email">
+                <small class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></small>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <input id="password"
+                       type="password"
+                       th:field="*{password}"
+                       placeholder="••••••••"
+                       autocomplete="new-password">
+                <small class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></small>
+
+                <label class="show-pass">
+                    <input type="checkbox" id="togglePass">
+                    <span>Şifreyi göster</span>
+                </label>
+
+                <p class="hint">
+                    En az 8 karakter · Büyük/küçük harf · Rakam · Özel karakter (!@#$ vb.)
+                </p>
+            </div>
+
+            <button type="submit" class="btn-primary">Kayıt Ol</button>
+
+            <p class="auth-footer">
+                Zaten hesabınız var mı?
+                <a th:href="@{/login}">Giriş Yapın</a>
+            </p>
+        </form>
+    </section>
+</main>
+
+<script>
+    const toggle = document.getElementById('togglePass');
+    const passField = document.getElementById('password');
+    if (toggle && passField) {
+        toggle.addEventListener('change', () => {
+            passField.type = toggle.checked ? 'text' : 'password';
+        });
+    }
+</script>
+</body>
+</html>

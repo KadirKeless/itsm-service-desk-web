@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Kullanıcı Yönetimi')}"></head>
+<body class="admin-users-page">
+
+<nav th:replace="~{fragments/layout :: navbar('admin')}"></nav>
+
+<main class="app-main admin-users-main">
+    <div th:replace="~{fragments/layout :: flash-messages}"></div>
+
+    <header class="page-header page-header-flex">
+        <div>
+            <h1>Kullanıcı Yönetimi</h1>
+            <p>Kullanıcıları seçin, toplu veya satır bazlı işlem yapın. Sütun başlıklarına tıklayarak sıralayabilir, tabloda arama yapabilirsiniz.</p>
+        </div>
+        <div class="admin-filter-tabs">
+            <a th:href="@{/admin/users(filter='pending')}"
+               class="filter-tab"
+               th:classappend="${filter == 'pending' ? ' active' : ''}">Onay Bekleyenler</a>
+            <a th:href="@{/admin/users(filter='all')}"
+               class="filter-tab"
+               th:classappend="${filter == 'all' ? ' active' : ''}">Tüm Kullanıcılar</a>
+            <button type="button" class="btn-primary" onclick="openCreateModal()">+ Yeni Kullanıcı</button>
+        </div>
+    </header>
+
+    <section th:if="${users.isEmpty()}" class="empty-state">
+        <p th:text="${filter == 'pending' ? 'Onay bekleyen kullanıcı yok.' : 'Sistemde kayıtlı kullanıcı yok.'}">—</p>
+    </section>
+
+    <section th:unless="${users.isEmpty()}" class="data-table-wrapper admin-table-wrapper">
+        <table class="data-table admin-users-table sortable-table paginated-table" id="usersTable">
+            <thead>
+            <tr>
+                <th class="col-check">
+                    <input type="checkbox" id="selectAll" title="Tümünü seç" aria-label="Tümünü seç">
+                </th>
+                <th data-sort="number" style="width:60px;">#</th>
+                <th data-sort="string">Ad Soyad</th>
+                <th data-sort="string">E-posta</th>
+                <th data-sort="string">Rol</th>
+                <th data-sort="string">Departman</th>
+                <th data-sort="status">Durum</th>
+                <th class="col-actions">İşlem</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="u : ${users}"
+                th:with="statusKey=${T(com.example.itsm_final.service.UserService).resolveStatusKey(u)}"
+                th:attr="data-user-id=${u.id},
+                         data-status=${statusKey},
+                         data-is-admin=${u.role != null and u.role.id == 1},
+                         data-name=${u.fullName},
+                         data-first-name=${u.firstName},
+                         data-last-name=${u.lastName},
+                         data-email=${u.email},
+                         data-role-id=${u.role != null ? u.role.id : ''},
+                         data-role-name=${u.role != null ? u.role.roleName : '—'},
+                         data-dept-id=${u.department != null ? u.department.id : ''},
+                         data-dept-name=${u.department != null ? u.department.departmentName : '—'},
+                         data-initials=${u.initials},
+                         data-has-avatar=${userAvatarMap[u.id]},
+                         data-avatar-url=${u.profilePictureUrl}">
+                <td class="col-check">
+                    <input type="checkbox" class="row-select" th:value="${u.id}" aria-label="Seç">
+                </td>
+                <td th:text="${u.id}">1</td>
+                <td th:text="${u.fullName}">Ad Soyad</td>
+                <td th:text="${u.email}">e@e.com</td>
+                <td th:text="${u.role != null ? u.role.roleName : '—'}">—</td>
+                <td th:text="${u.department != null ? u.department.departmentName : '—'}">—</td>
+                <td th:attr="data-sort-value=${statusKey == 'active' ? 1 : (statusKey == 'pending' ? 0 : 2)}">
+                    <span class="badge"
+                          th:classappend="${statusKey == 'active' ? ' user-status-active'
+                                            : (statusKey == 'pending' ? ' user-status-pending' : ' user-status-frozen')}"
+                          th:text="${T(com.example.itsm_final.service.UserService).resolveStatusLabel(u)}">—</span>
+                </td>
+                <td class="col-actions">
+                    <div class="icon-actions"
+                         th:with="isAdminRow=${u.role != null and u.role.id == 1}">
+
+                        <button th:if="${statusKey == 'frozen' and !isAdminRow}"
+                                type="button"
+                                class="icon-btn icon-btn-success"
+                                title="Aktifleştir" aria-label="Aktifleştir"
+                                th:attr="data-user-action='activate',data-user-id=${u.id},data-user-name=${u.fullName}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+                        </button>
+
+                        <button th:if="${statusKey == 'active' and !isAdminRow}"
+                                type="button"
+                                class="icon-btn icon-btn-warning"
+                                title="Dondur" aria-label="Dondur"
+                                th:attr="data-user-action='freeze',data-user-id=${u.id},data-user-name=${u.fullName}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </button>
+
+                        <button th:if="${!isAdminRow}"
+                                type="button"
+                                class="icon-btn icon-btn-edit edit-user-btn"
+                                title="Düzenle" aria-label="Düzenle">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
+                        </button>
+
+                        <button th:if="${!isAdminRow}"
+                                type="button"
+                                class="icon-btn icon-btn-key reset-password-btn"
+                                title="Şifre Değiştir" aria-label="Şifre Değiştir"
+                                th:attr="data-user-id=${u.id},data-user-name=${u.fullName}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.65 10A5.99 5.99 0 0 0 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                        </button>
+
+                        <button th:if="${!isAdminRow}"
+                                type="button"
+                                class="icon-btn icon-btn-danger"
+                                title="Sil" aria-label="Sil"
+                                th:attr="data-user-action='delete',data-user-id=${u.id},data-user-name=${u.fullName}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+
+                        <span th:if="${isAdminRow}" class="hint hint-inline">Admin</span>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="admin-bulk-bar" id="bulkBar" th:unless="${users.isEmpty()}">
+        <div class="admin-bulk-bar-inner">
+            <span class="bulk-selection-info" id="selectionInfo">Seçili: 0</span>
+
+            <div class="bulk-assign-fields" id="bulkAssignFields">
+                <label class="bulk-field-label" for="bulkRole">Rol</label>
+                <select id="bulkRole" name="roleId" disabled>
+                    <option value="">Rol seçiniz...</option>
+                    <option th:each="r : ${roles}" th:value="${r.id}" th:text="${r.roleName}"></option>
+                </select>
+                <label class="bulk-field-label" for="bulkDept">Departman</label>
+                <select id="bulkDept" name="departmentId" disabled>
+                    <option value="">Departman seçiniz...</option>
+                    <option th:each="d : ${departments}" th:value="${d.id}" th:text="${d.departmentName}"></option>
+                </select>
+            </div>
+
+            <div class="bulk-action-buttons">
+                <button type="button" class="icon-btn icon-btn-success icon-btn-lg" id="btnBulkActivate"
+                        title="Seçilenleri Aktifleştir" aria-label="Aktifleştir" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+                </button>
+
+                <button type="button" class="icon-btn icon-btn-warning icon-btn-lg" id="btnBulkFreeze"
+                        title="Seçilenleri Dondur" aria-label="Dondur" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+
+                <button type="button" class="icon-btn icon-btn-edit icon-btn-lg" id="btnBulkEdit"
+                        title="Düzenle (tek seçim)" aria-label="Düzenle" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
+                </button>
+
+                <button type="button" class="icon-btn icon-btn-key icon-btn-lg" id="btnBulkPassword"
+                        title="Şifre Değiştir (tek seçim)" aria-label="Şifre Değiştir" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.65 10A5.99 5.99 0 0 0 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                </button>
+
+                <button type="button" class="icon-btn icon-btn-danger icon-btn-lg" id="btnBulkDelete"
+                        title="Seçilenleri Sil" aria-label="Sil" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="createUserModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card modal-card-wide">
+        <h3>Yeni Kullanıcı Ekle</h3>
+        <form id="createUserForm" th:object="${createDto}"
+              enctype="multipart/form-data" autocomplete="off">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <div id="createModalError" class="modal-form-error" hidden></div>
+
+            <div class="modal-avatar-panel">
+                <div class="modal-avatar-slot">
+                    <img id="createAvatarImg" class="modal-avatar-img" alt="Önizleme" hidden/>
+                    <span id="createAvatarInitials" class="modal-avatar-initials">YK</span>
+                </div>
+                <div class="avatar-edit-controls">
+                    <p class="avatar-edit-name">Profil Resmi (İsteğe Bağlı)</p>
+                    <p class="hint">Seçmezseniz baş harfler gösterilir.</p>
+                    <label class="btn-secondary btn-file">
+                        Resim Seç
+                        <input type="file" name="profilePicture" id="createProfilePicture"
+                               accept="image/jpeg,image/png,.jpg,.jpeg,.png"/>
+                    </label>
+                    <p class="hint">JPG/PNG · Maks. 5 MB</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="cFirst">Ad</label>
+                    <input id="cFirst" type="text" th:field="*{firstName}" required autocomplete="off"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></span>
+                </div>
+                <div class="form-group">
+                    <label for="cLast">Soyad</label>
+                    <input id="cLast" type="text" th:field="*{lastName}" required autocomplete="off"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="cMail">E-posta</label>
+                <input id="cMail" type="email" th:field="*{email}" required
+                       autocomplete="off" autocapitalize="off" spellcheck="false"
+                       readonly onfocus="this.removeAttribute('readonly');"/>
+                <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+            </div>
+            <div class="form-group">
+                <label for="cPass">Şifre</label>
+                <input id="cPass" type="password" th:field="*{password}" required
+                       autocomplete="new-password" data-lpignore="true"
+                       readonly onfocus="this.removeAttribute('readonly');"/>
+                <span class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
+                <p class="hint">En az 8 karakter · Büyük/küçük harf · Rakam · Özel karakter</p>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="cRole">Rol</label>
+                    <select id="cRole" th:field="*{roleId}" required>
+                        <option value="">Seçiniz</option>
+                        <option th:each="r : ${roles}" th:value="${r.id}" th:text="${r.roleName}"></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="cDept">Departman</label>
+                    <select id="cDept" th:field="*{departmentId}" required>
+                        <option value="">Seçiniz</option>
+                        <option th:each="d : ${departments}" th:value="${d.id}" th:text="${d.departmentName}"></option>
+                    </select>
+                </div>
+            </div>
+            <p class="hint">⚠ Yönetici max 1, Çalışan max 5 per departman.</p>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeCreateModal()">İptal</button>
+                <button type="submit" class="btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="editUserModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card modal-card-wide">
+        <h3 id="editModalTitle">Kullanıcı Düzenle</h3>
+        <form id="editUserForm" th:object="${editDto}"
+              enctype="multipart/form-data" autocomplete="off">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" id="editUserIdHidden" th:value="${editUserId}"/>
+            <div id="editModalError" class="modal-form-error" hidden></div>
+
+            <div class="modal-avatar-panel">
+                <div class="modal-avatar-slot">
+                    <img id="editAvatarImg" class="modal-avatar-img" alt="Profil resmi" hidden/>
+                    <span id="editAvatarInitials" class="modal-avatar-initials">XX</span>
+                </div>
+                <div class="avatar-edit-controls">
+                    <p class="avatar-edit-name" id="editAvatarName">—</p>
+                    <p class="hint">Profil resmini değiştirmek için:</p>
+                    <label class="btn-secondary btn-file">
+                        Resim Seç
+                        <input type="file" name="profilePicture" id="editProfilePicture"
+                               accept="image/jpeg,image/png,.jpg,.jpeg,.png"/>
+                    </label>
+                    <label class="avatar-remove-check" id="editRemoveAvatarWrap" hidden>
+                        <input type="checkbox" name="removeProfilePicture" value="true" id="editRemoveProfilePicture"/>
+                        Profil resmini kaldır
+                    </label>
+                    <p class="hint">JPG/PNG · Maks. 5 MB · Kare kırpılır</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eFirst">Ad</label>
+                    <input id="eFirst" type="text" th:field="*{firstName}" required autocomplete="off"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></span>
+                </div>
+                <div class="form-group">
+                    <label for="eLast">Soyad</label>
+                    <input id="eLast" type="text" th:field="*{lastName}" required autocomplete="off"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="eMail">E-posta</label>
+                <input id="eMail" type="email" th:field="*{email}" required autocomplete="off"/>
+                <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="eRole">Rol</label>
+                    <select id="eRole" th:field="*{roleId}" required>
+                        <option value="">Seçiniz</option>
+                        <option th:each="r : ${roles}" th:value="${r.id}" th:text="${r.roleName}"></option>
+                    </select>
+                    <span class="field-error" th:if="${#fields.hasErrors('roleId')}" th:errors="*{roleId}"></span>
+                </div>
+                <div class="form-group">
+                    <label for="eDept">Departman</label>
+                    <select id="eDept" th:field="*{departmentId}" required>
+                        <option value="">Seçiniz</option>
+                        <option th:each="d : ${departments}" th:value="${d.id}" th:text="${d.departmentName}"></option>
+                    </select>
+                    <span class="field-error" th:if="${#fields.hasErrors('departmentId')}" th:errors="*{departmentId}"></span>
+                </div>
+            </div>
+            <p class="hint">⚠ Yönetici max 1, Çalışan max 5 per departman. Admin rolü atanamaz.</p>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditModal()">İptal</button>
+                <button type="submit" class="btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="resetPasswordModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+        <h3>Şifre Değiştir</h3>
+        <p class="hint" id="resetPasswordUserLabel">—</p>
+        <form id="resetPasswordForm" autocomplete="off">
+            <input type="hidden" id="resetPasswordUserId"/>
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <div id="resetPasswordModalError" class="modal-form-error" hidden></div>
+
+            <div class="form-group">
+                <label for="resetNewPassword">Yeni Şifre</label>
+                <input id="resetNewPassword" name="newPassword" type="password" required
+                       autocomplete="new-password" data-lpignore="true"/>
+                <span class="field-error" hidden></span>
+            </div>
+            <div class="form-group">
+                <label for="resetConfirmPassword">Yeni Şifre (Tekrar)</label>
+                <input id="resetConfirmPassword" name="confirmPassword" type="password" required
+                       autocomplete="new-password" data-lpignore="true"/>
+                <span class="field-error" hidden></span>
+            </div>
+            <p class="hint">En az 8 karakter · Büyük/küçük harf · Rakam · Özel karakter (!@#$ vb.)</p>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="resetPasswordCancel">İptal</button>
+                <button type="submit" class="btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script th:inline="javascript">
+(function () {
+    const selectAll = document.getElementById('selectAll');
+    const allRows = () => Array.from(document.querySelectorAll('#usersTable tbody tr'));
+    const pageVisibleRows = () => {
+        const api = window.TablePagination?.get('usersTable');
+        if (api) return api.getVisibleRows();
+        return allRows().filter(r => !r.classList.contains('paginate-hidden') && !r.classList.contains('paginate-no-match'));
+    };
+    const selectedRows = () => allRows().filter(r => r.querySelector('.row-select')?.checked);
+
+    const bulkRole = document.getElementById('bulkRole');
+    const bulkDept = document.getElementById('bulkDept');
+    const btnActivate = document.getElementById('btnBulkActivate');
+    const btnFreeze = document.getElementById('btnBulkFreeze');
+    const btnEdit = document.getElementById('btnBulkEdit');
+    const btnPassword = document.getElementById('btnBulkPassword');
+    const btnDelete = document.getElementById('btnBulkDelete');
+    const selectionInfo = document.getElementById('selectionInfo');
+
+    function updateBulkBar() {
+        if (!selectionInfo) return;
+        const selected = selectedRows();
+        const count = selected.length;
+
+        selectionInfo.textContent = 'Seçili: ' + count;
+
+        let allPending = count > 0;
+        let allActive = count > 0;
+        let allPassive = count > 0;
+        let hasAdmin = false;
+
+        selected.forEach(r => {
+            const st = r.dataset.status;
+            if (st !== 'pending') allPending = false;
+            if (st !== 'active') allActive = false;
+            if (st === 'active') allPassive = false;
+            if (r.dataset.isAdmin === 'true') hasAdmin = true;
+        });
+
+        bulkRole.disabled = !allPending;
+        bulkDept.disabled = !allPending;
+        if (!allPending) {
+            bulkRole.value = '';
+            bulkDept.value = '';
+        }
+
+        const hasPending = selected.some(r => r.dataset.status === 'pending');
+        const assignReady = bulkRole?.value && bulkDept?.value;
+        btnActivate.disabled = count === 0
+            || selected.some(r => r.dataset.status === 'active')
+            || (hasPending && !assignReady);
+
+        // Dondur: seçim var VE hepsi aktif VE admin yok
+        btnFreeze.disabled = count === 0 || !allActive || hasAdmin;
+
+        // Sil: en az bir seçim VE admin yok
+        btnDelete.disabled = count === 0 || hasAdmin;
+        if (btnDelete) {
+            btnDelete.title = hasAdmin
+                ? 'Admin seçiliyken toplu silme yapılamaz'
+                : 'Seçilenleri Sil';
+        }
+
+        // Düzenle / şifre: tek seçim + admin değil
+        const singleNonAdmin = count === 1 && selected[0].dataset.isAdmin !== 'true';
+        btnEdit.disabled = !singleNonAdmin;
+        btnPassword.disabled = !singleNonAdmin;
+
+        if (selectAll) {
+            const visible = pageVisibleRows();
+            const visibleSelected = visible.filter(r => r.querySelector('.row-select')?.checked).length;
+            selectAll.checked = visible.length > 0 && visibleSelected === visible.length;
+            selectAll.indeterminate = visibleSelected > 0 && visibleSelected < visible.length;
+        }
+    }
+
+    btnEdit?.addEventListener('click', function () {
+        const selected = selectedRows();
+        if (selected.length !== 1) {
+            if (window.ConfirmModal) {
+                ConfirmModal.alert({ title: 'Uyarı', message: 'Toplu güncelleme yapılamaz! Lütfen sadece tek bir kullanıcı seçiniz.', variant: 'warning' });
+            } else {
+                alert('Toplu güncelleme yapılamaz! Lütfen sadece tek bir kullanıcı seçiniz.');
+            }
+            return;
+        }
+        if (selected[0].dataset.isAdmin === 'true') {
+            if (window.ConfirmModal) {
+                ConfirmModal.alert({ title: 'Uyarı', message: 'Admin hesabı üzerinde değişiklik yapılamaz!', variant: 'warning' });
+            } else {
+                alert('Admin hesabı üzerinde değişiklik yapılamaz!');
+            }
+            return;
+        }
+        openEditModalFromRow(selected[0]);
+    });
+
+    btnPassword?.addEventListener('click', function () {
+        const selected = selectedRows();
+        if (selected.length !== 1) {
+            if (window.ConfirmModal) {
+                ConfirmModal.alert({ title: 'Uyarı', message: 'Toplu şifre değiştirme yapılamaz! Lütfen sadece tek bir kullanıcı seçiniz.', variant: 'warning' });
+            } else {
+                alert('Toplu şifre değiştirme yapılamaz! Lütfen sadece tek bir kullanıcı seçiniz.');
+            }
+            return;
+        }
+        if (selected[0].dataset.isAdmin === 'true') {
+            if (window.ConfirmModal) {
+                ConfirmModal.alert({ title: 'Uyarı', message: 'Sistem yöneticisi şifresi bu ekrandan değiştirilemez!', variant: 'warning' });
+            } else {
+                alert('Sistem yöneticisi şifresi bu ekrandan değiştirilemez!');
+            }
+            return;
+        }
+        if (typeof window.openResetPasswordModal === 'function') {
+            window.openResetPasswordModal(selected[0].dataset.userId, selected[0].dataset.name);
+        }
+    });
+
+    document.querySelectorAll('.edit-user-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEditModalFromRow(btn.closest('tr')));
+    });
+
+    allRows().forEach(row => {
+        row.addEventListener('dblclick', e => {
+            if (e.target.closest('.col-check, .col-actions, .icon-form, .row-select, button, a, input')) return;
+            if (row.dataset.isAdmin === 'true') return;
+            openEditModalFromRow(row);
+        });
+    });
+
+    selectAll?.addEventListener('change', function () {
+        const checked = selectAll.checked;
+        pageVisibleRows().forEach(r => {
+            const cb = r.querySelector('.row-select');
+            if (cb) cb.checked = checked;
+        });
+        updateBulkBar();
+    });
+
+    document.querySelectorAll('.row-select').forEach(cb => {
+        cb.addEventListener('change', updateBulkBar);
+    });
+
+    bulkRole?.addEventListener('change', updateBulkBar);
+    bulkDept?.addEventListener('change', updateBulkBar);
+
+    document.getElementById('usersTable')?.addEventListener('table-pagination-updated', updateBulkBar);
+
+    updateBulkBar();
+})();
+
+function computeInitials(first, last) {
+    const f = (first || '').trim();
+    const l = (last || '').trim();
+    return ((f ? f[0] : '') + (l ? l[0] : '')).toUpperCase() || 'YK';
+}
+
+function resetCreateAvatarPreview() {
+    const img = document.getElementById('createAvatarImg');
+    const initials = document.getElementById('createAvatarInitials');
+    const first = document.getElementById('cFirst')?.value || '';
+    const last = document.getElementById('cLast')?.value || '';
+    if (img) {
+        img.hidden = true;
+        img.removeAttribute('src');
+    }
+    if (initials) {
+        initials.hidden = false;
+        initials.textContent = computeInitials(first, last);
+    }
+}
+
+function setEditAvatarPreview(hasAvatar, avatarUrl, initials) {
+    const img = document.getElementById('editAvatarImg');
+    const initialsEl = document.getElementById('editAvatarInitials');
+    const removeWrap = document.getElementById('editRemoveAvatarWrap');
+    const removeCb = document.getElementById('editRemoveProfilePicture');
+
+    if (removeCb) removeCb.checked = false;
+
+    if (hasAvatar && avatarUrl && img) {
+        img.src = avatarUrl + (avatarUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+        img.hidden = false;
+        if (initialsEl) initialsEl.hidden = true;
+        if (removeWrap) removeWrap.hidden = false;
+        img.onerror = () => {
+            img.hidden = true;
+            img.removeAttribute('src');
+            if (initialsEl) {
+                initialsEl.textContent = initials || 'XX';
+                initialsEl.hidden = false;
+            }
+            if (removeWrap) removeWrap.hidden = true;
+        };
+    } else {
+        if (img) {
+            img.hidden = true;
+            img.removeAttribute('src');
+        }
+        if (initialsEl) {
+            initialsEl.textContent = initials || 'XX';
+            initialsEl.hidden = false;
+        }
+        if (removeWrap) removeWrap.hidden = true;
+    }
+}
+
+function openEditModalFromRow(row) {
+    if (!row) return;
+    closeCreateModal();
+    const d = row.dataset;
+    document.getElementById('editUserIdHidden').value = d.userId;
+    document.getElementById('editModalTitle').textContent = 'Kullanıcı Düzenle — #' + d.userId;
+    document.getElementById('editAvatarName').textContent = d.name || '—';
+    document.getElementById('eFirst').value = d.firstName || '';
+    document.getElementById('eLast').value = d.lastName || '';
+    document.getElementById('eMail').value = d.email || '';
+    document.getElementById('eRole').value = d.roleId || '';
+    document.getElementById('eDept').value = d.deptId || '';
+    document.getElementById('editProfilePicture').value = '';
+    const errBanner = document.getElementById('editModalError');
+    if (errBanner) { errBanner.hidden = true; errBanner.textContent = ''; }
+    setEditAvatarPreview(d.hasAvatar === 'true', d.avatarUrl, d.initials);
+    document.getElementById('editUserModal').style.display = 'flex';
+}
+
+function openEditModalFromServer() {
+    closeCreateModal();
+    const userId = document.getElementById('editUserIdHidden')?.value;
+    if (!userId) return;
+    document.getElementById('editModalTitle').textContent = 'Kullanıcı Düzenle — #' + userId;
+    const first = document.getElementById('eFirst')?.value || '';
+    const last = document.getElementById('eLast')?.value || '';
+    document.getElementById('editAvatarName').textContent = (first + ' ' + last).trim() || '—';
+    const errBanner = document.getElementById('editModalError');
+    if (errBanner) { errBanner.hidden = true; errBanner.textContent = ''; }
+    const initials = computeInitials(first, last);
+    const row = document.querySelector('#usersTable tbody tr[data-user-id="' + userId + '"]');
+    const hasAvatar = row ? row.dataset.hasAvatar === 'true' : false;
+    const avatarUrl = row ? row.dataset.avatarUrl : null;
+    setEditAvatarPreview(hasAvatar, avatarUrl, initials);
+    document.getElementById('editUserModal').style.display = 'flex';
+}
+
+function openCreateModal(clearForm) {
+    closeEditModal();
+    const shouldClear = clearForm !== false;
+    const form = document.getElementById('createUserForm');
+    if (shouldClear && form) form.reset();
+    const errBanner = document.getElementById('createModalError');
+    if (errBanner) { errBanner.hidden = true; errBanner.textContent = ''; }
+    if (shouldClear) {
+        resetCreateAvatarPreview();
+        const mail = document.getElementById('cMail');
+        const pass = document.getElementById('cPass');
+        if (mail) mail.value = '';
+        if (pass) pass.value = '';
+        setTimeout(() => {
+            if (mail && !mail.matches(':focus')) mail.value = '';
+            if (pass && !pass.matches(':focus')) pass.value = '';
+        }, 60);
+    } else {
+        resetCreateAvatarPreview();
+    }
+    document.getElementById('createUserModal').style.display = 'flex';
+}
+
+function closeCreateModal() {
+    document.getElementById('createUserModal').style.display = 'none';
+}
+
+function closeEditModal() {
+    document.getElementById('editUserModal').style.display = 'none';
+}
+
+(function initAdminModals() {
+    document.getElementById('cFirst')?.addEventListener('input', resetCreateAvatarPreview);
+    document.getElementById('cLast')?.addEventListener('input', resetCreateAvatarPreview);
+
+    document.getElementById('createProfilePicture')?.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        const img = document.getElementById('createAvatarImg');
+        const initials = document.getElementById('createAvatarInitials');
+        if (!file) {
+            resetCreateAvatarPreview();
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        if (img) {
+            img.src = url;
+            img.hidden = false;
+        }
+        if (initials) initials.hidden = true;
+    });
+
+    document.getElementById('editProfilePicture')?.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        const img = document.getElementById('editAvatarImg');
+        const initialsEl = document.getElementById('editAvatarInitials');
+        const removeCb = document.getElementById('editRemoveProfilePicture');
+        const removeWrap = document.getElementById('editRemoveAvatarWrap');
+        if (!file) return;
+        if (removeCb) removeCb.checked = false;
+        const url = URL.createObjectURL(file);
+        if (img) {
+            img.src = url;
+            img.hidden = false;
+        }
+        if (initialsEl) initialsEl.hidden = true;
+        if (removeWrap) removeWrap.hidden = false;
+    });
+
+    document.getElementById('editRemoveProfilePicture')?.addEventListener('change', function () {
+        const img = document.getElementById('editAvatarImg');
+        const initialsEl = document.getElementById('editAvatarInitials');
+        const first = document.getElementById('eFirst')?.value || '';
+        const last = document.getElementById('eLast')?.value || '';
+        if (this.checked) {
+            document.getElementById('editProfilePicture').value = '';
+            if (img) {
+                img.hidden = true;
+                img.removeAttribute('src');
+            }
+            if (initialsEl) {
+                initialsEl.textContent = computeInitials(first, last);
+                initialsEl.hidden = false;
+            }
+        } else {
+            const row = document.querySelector('#usersTable tbody tr[data-user-id="' +
+                document.getElementById('editUserIdHidden')?.value + '"]');
+            if (row) {
+                setEditAvatarPreview(row.dataset.hasAvatar === 'true', row.dataset.avatarUrl, row.dataset.initials);
+            }
+        }
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay && overlay.id !== 'confirmModal') overlay.style.display = 'none';
+        });
+    });
+
+    const showCreateOnLoad = /*[[${showCreateModal}]]*/ false;
+    const showEditOnLoad = /*[[${showEditModal}]]*/ false;
+    if (showCreateOnLoad) openCreateModal(false);
+    if (showEditOnLoad) openEditModalFromServer();
+})();
+</script>
+
+<div id="confirmModal" class="modal-overlay confirm-modal-overlay" style="display:none;">
+    <div class="modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+        <h3 id="confirmModalTitle">Onay</h3>
+        <p id="confirmModalMessage"></p>
+        <div id="confirmModalError" class="confirm-modal-error" hidden></div>
+        <div class="form-actions confirm-modal-actions" id="confirmModalActions">
+            <button type="button" class="btn-secondary" id="confirmModalCancel">Hayır</button>
+            <button type="button" class="btn-primary" id="confirmModalConfirm">Evet</button>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/confirm-modal.js}"></script>
+<script th:src="@{/js/admin-users-api.js}"></script>
+<script th:src="@{/js/table-pagination.js}"></script>
+<script th:src="@{/js/table-sort.js}"></script>
+
+</body>
+</html>

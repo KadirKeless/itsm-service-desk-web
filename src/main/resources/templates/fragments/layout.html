@@ -1,0 +1,117 @@
+<!--
+  Tum auth-sonrasi sayfalar bu fragment'i kullanir.
+  Kullanim:
+    <head th:replace="~{fragments/layout :: head('Sayfa Basligi')}"></head>
+    <nav th:replace="~{fragments/layout :: navbar('dashboard')}"></nav>
+-->
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="|ITSM — ${title}|">ITSM</title>
+    <link rel="icon" type="image/png" th:href="@{/images/icon.png}">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>html.scroll-pending { visibility: hidden; }</style>
+    <script>
+        (function () {
+            var SCROLL_PREFIX = 'itsm-scroll:';
+            var key = SCROLL_PREFIX + location.pathname + location.search;
+            var saved = sessionStorage.getItem(key);
+            if (saved !== null) {
+                sessionStorage.removeItem(key);
+                document.documentElement.classList.add('scroll-pending');
+                document.documentElement.setAttribute('data-restore-scroll', saved);
+                if ('scrollRestoration' in history) {
+                    history.scrollRestoration = 'manual';
+                }
+            }
+            document.addEventListener('submit', function (e) {
+                var form = e.target;
+                if (!form || form.tagName !== 'FORM') return;
+                if ((form.method || 'get').toLowerCase() !== 'post') return;
+                if (form.classList.contains('logout-form')) return;
+                sessionStorage.setItem(key, String(window.scrollY || window.pageYOffset || 0));
+            }, true);
+        })();
+    </script>
+    <script th:src="@{/js/toast.js}" defer></script>
+</head>
+<body>
+
+<nav th:fragment="navbar(active)" class="navbar">
+    <div class="navbar-inner">
+        <a th:href="@{/dashboard}" class="brand" aria-label="ITSM Ana Sayfa">
+            <img th:src="@{/images/itsm-logo.png}"
+                 alt="ITSM — Hizmet ve Yönetim Sistemleri"
+                 class="brand-img">
+        </a>
+
+        <ul class="nav-links">
+            <li><a th:href="@{/dashboard}"
+                   th:classappend="${active=='dashboard' ? ' active' : ''}">Ana Sayfa</a></li>
+
+            <li sec:authorize="!hasRole('ADMIN')">
+                <a th:href="@{/tickets/new}"
+                   th:classappend="${active=='ticket-new' ? ' active' : ''}">Yeni Talep</a>
+            </li>
+
+            <li sec:authorize="!hasRole('ADMIN')">
+                <a th:href="@{/tickets/my}"
+                   th:classappend="${active=='ticket-my' ? ' active' : ''}">Taleplerim</a>
+            </li>
+
+            <li sec:authorize="hasRole('EMPLOYEE')">
+                <a th:href="@{/tickets/assigned}"
+                   th:classappend="${active=='ticket-assigned' ? ' active' : ''}">Bana Atananlar</a>
+            </li>
+
+            <li sec:authorize="hasRole('MANAGER')">
+                <a th:href="@{/tickets/department}"
+                   th:classappend="${active=='ticket-dept' ? ' active' : ''}">Departman Talepleri</a>
+            </li>
+
+            <li sec:authorize="hasRole('ADMIN')">
+                <a th:href="@{/tickets/all}"
+                   th:classappend="${active=='ticket-all' ? ' active' : ''}">Talep Yönetimi</a>
+            </li>
+
+            <li sec:authorize="hasRole('ADMIN')">
+                <a th:href="@{/admin/users}"
+                   th:classappend="${active=='admin' ? ' active' : ''}">Kullanıcı Yönetimi</a>
+            </li>
+        </ul>
+
+        <div class="nav-user" sec:authorize="isAuthenticated()">
+            <a th:href="@{/profile}" class="nav-user-profile" title="Profilim">
+                <img th:if="${navHasAvatar}" class="nav-avatar" th:src="${navAvatarUrl}" alt="Profil resmi"
+                     th:attr="data-initials=${#authentication.principal.initials}"
+                     onerror="this.hidden=true; this.nextElementSibling.hidden=false;"/>
+                <span class="nav-avatar nav-avatar-initials"
+                      th:hidden="${navHasAvatar}"
+                      sec:authentication="principal.initials">XX</span>
+                <div class="nav-user-meta">
+                    <span class="user-name" sec:authentication="principal.fullName">Kullanıcı</span>
+                    <span class="nav-dept" sec:authorize="!hasRole('ADMIN')"
+                          sec:authentication="principal.departmentName">Departman</span>
+                </div>
+            </a>
+            <form th:action="@{/logout}" method="post" class="logout-form">
+                <button type="submit" class="btn-link-danger" title="Çıkış Yap">Çıkış</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div th:fragment="flash-messages"
+     id="flash-messages-data"
+     hidden
+     th:attr="data-success=${successMessage},data-error=${errorMessage},data-info=${infoMessage}">
+</div>
+
+</body>
+</html>

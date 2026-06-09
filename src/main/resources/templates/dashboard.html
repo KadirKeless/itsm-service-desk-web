@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Ana Sayfa')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar('dashboard')}"></nav>
+
+<main class="app-main dashboard-main">
+    <div th:replace="~{fragments/layout :: flash-messages}"></div>
+
+    <header class="dashboard-hero">
+        <h1>
+            <span th:if="${roleName == 'Sistem Yöneticisi'}">Hoş geldin, Admin!</span>
+            <span th:unless="${roleName == 'Sistem Yöneticisi'}"
+                  th:text="|Hoş geldin, ${firstName}!|">Hoş geldin!</span>
+        </h1>
+        <p th:text="|${roleName} paneline erişiyorsunuz.|">Rol paneline erişiyorsunuz.</p>
+    </header>
+
+    <div class="dashboard-layout">
+
+        <div class="dashboard-top">
+            <section class="dashboard-account-panel info-panel">
+                <div class="dashboard-account-profile">
+                    <div class="dashboard-avatar-slot">
+                        <span class="dashboard-avatar-initials" th:text="${initials}">XX</span>
+                        <img class="dashboard-avatar-img"
+                             th:src="@{/assets-avatars/avatar_{id}.png(id=${userId})}"
+                             alt="Profil resmi"
+                             onerror="this.hidden=true;"/>
+                    </div>
+                    <div class="dashboard-account-meta">
+                        <h2 class="dashboard-account-name" th:text="${fullName}">Ad Soyad</h2>
+                        <p class="dashboard-account-role" th:text="${accountSubtitle}">Rol</p>
+                    </div>
+                </div>
+                <ul class="info-list dashboard-account-list">
+                    <li>
+                        <strong>E-posta</strong>
+                        <span th:text="${email}">e@e</span>
+                    </li>
+                    <li th:unless="${isAdmin}">
+                        <strong>Departman</strong>
+                        <span th:text="${departmentName}">—</span>
+                    </li>
+                </ul>
+                <div class="dashboard-account-action">
+                    <a th:href="@{/profile}" class="btn-secondary btn-block">Profilim</a>
+                </div>
+            </section>
+
+            <!-- Admin istatistikleri -->
+            <div class="dashboard-stats" sec:authorize="hasRole('ADMIN')">
+                <div class="stat-card stat-blue">
+                    <span class="stat-card-label">Toplam Talep</span>
+                    <span class="stat-card-value" th:text="${statsAllTickets}">0</span>
+                </div>
+                <div class="stat-card stat-amber">
+                    <span class="stat-card-label">Onay Bekleyen Kullanıcı</span>
+                    <span class="stat-card-value" th:text="${statsPendingUsers}">0</span>
+                </div>
+                <div class="stat-card stat-green">
+                    <span class="stat-card-label">Açık Talep</span>
+                    <span class="stat-card-value" th:text="${statsOpenTickets}">0</span>
+                </div>
+            </div>
+
+            <!-- Yönetici istatistikleri -->
+            <div class="dashboard-stats" sec:authorize="hasRole('MANAGER')">
+                <div class="stat-card stat-blue">
+                    <span class="stat-card-label">Departmana Gelen</span>
+                    <span class="stat-card-value" th:text="${statsDepartmentTickets}">0</span>
+                </div>
+                <div class="stat-card stat-amber">
+                    <span class="stat-card-label">Atanmayı Bekleyen</span>
+                    <span class="stat-card-value" th:text="${statsWaitingAssign}">0</span>
+                </div>
+                <div class="stat-card stat-green">
+                    <span class="stat-card-label">Çözülen (Bu Ay)</span>
+                    <span class="stat-card-value" th:text="${statsResolvedMonth}">0</span>
+                </div>
+            </div>
+
+            <!-- Çalışan istatistikleri -->
+            <div class="dashboard-stats" sec:authorize="hasRole('EMPLOYEE')">
+                <div class="stat-card stat-blue">
+                    <span class="stat-card-label">Taleplerim</span>
+                    <span class="stat-card-value" th:text="${statsMyTickets}">0</span>
+                </div>
+                <div class="stat-card stat-pink">
+                    <span class="stat-card-label">Bana Atanan</span>
+                    <span class="stat-card-value" th:text="${statsAssignedTickets}">0</span>
+                </div>
+                <div class="stat-card stat-green">
+                    <span class="stat-card-label">Aktif Görev</span>
+                    <span class="stat-card-value" th:text="${statsActiveAssigned}">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin aksiyon kartları -->
+        <section class="dashboard-actions" sec:authorize="hasRole('ADMIN')">
+            <div class="cards-grid dashboard-action-grid">
+                <a th:href="@{/tickets/all}" class="action-card card-amber">
+                    <div class="card-icon"><i class="bi bi-diagram-3-fill" aria-hidden="true"></i></div>
+                    <h3>Talep Yönetimi</h3>
+                    <p>Uygulamadaki tüm taleplerin genel haritasını ve durumlarını inceleyin.</p>
+                </a>
+                <a th:href="@{/admin/users}" class="action-card card-purple">
+                    <div class="card-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></div>
+                    <h3>Kullanıcı Yönetimi</h3>
+                    <p>Sistemdeki kullanıcıları, yetki ve departmanlarını yönetin.</p>
+                </a>
+            </div>
+        </section>
+
+        <!-- Yönetici aksiyon kartları -->
+        <section class="dashboard-actions" sec:authorize="hasRole('MANAGER')">
+            <div class="cards-grid dashboard-action-grid">
+                <a th:href="@{/tickets/new}" class="action-card card-blue">
+                    <div class="card-icon"><i class="bi bi-pencil-square" aria-hidden="true"></i></div>
+                    <h3>Yeni Talep</h3>
+                    <p>Departmanlara yeni bir destek veya hizmet talebi iletin.</p>
+                </a>
+                <a th:href="@{/tickets/my}" class="action-card card-green">
+                    <div class="card-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></div>
+                    <h3>Taleplerim</h3>
+                    <p>Açmış olduğunuz tüm taleplerin güncel durumlarını takip edin.</p>
+                </a>
+                <a th:href="@{/tickets/department}" class="action-card card-amber">
+                    <div class="card-icon"><i class="bi bi-building" aria-hidden="true"></i></div>
+                    <h3>Departman Talepleri</h3>
+                    <p>Departmanınıza düşen tüm iş taleplerini ve görevleri listeleyin.</p>
+                </a>
+            </div>
+        </section>
+
+        <!-- Çalışan aksiyon kartları -->
+        <section class="dashboard-actions" sec:authorize="hasRole('EMPLOYEE')">
+            <div class="cards-grid dashboard-action-grid">
+                <a th:href="@{/tickets/new}" class="action-card card-blue">
+                    <div class="card-icon"><i class="bi bi-pencil-square" aria-hidden="true"></i></div>
+                    <h3>Yeni Talep</h3>
+                    <p>Departmanlara yeni bir destek veya hizmet talebi iletin.</p>
+                </a>
+                <a th:href="@{/tickets/my}" class="action-card card-green">
+                    <div class="card-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></div>
+                    <h3>Taleplerim</h3>
+                    <p>Açmış olduğunuz tüm taleplerin güncel durumlarını takip edin.</p>
+                </a>
+                <a th:href="@{/tickets/assigned}" class="action-card card-pink">
+                    <div class="card-icon"><i class="bi bi-person-check-fill" aria-hidden="true"></i></div>
+                    <h3>Bana Atananlar</h3>
+                    <p>Çözümlemeniz için size yönlendirilmiş aktif görevleri görüntüleyin.</p>
+                </a>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+</body>
+</html>
