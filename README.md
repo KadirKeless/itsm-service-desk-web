@@ -20,14 +20,14 @@ To inspect the original desktop infrastructure that served as the initial bluepr
 
 *   **Desktop Version (Java Swing & MySQL):** [https://github.com/KadirKeless/itsm-service-desk-desktop](https://github.com/KadirKeless/itsm-service-desk-desktop)
 
+  <img width="1918" height="866" alt="image" src="https://github.com/user-attachments/assets/09da26da-d99b-4dfb-82b1-2eded431f239" />
+<img width="1918" height="867" alt="image" src="https://github.com/user-attachments/assets/2c47623d-9e4b-471a-8c69-9df5f55741dc" />
+<img width="1918" height="866" alt="image" src="https://github.com/user-attachments/assets/df48259b-caba-430f-ac70-a89d0dfaf2c5" />
+<img width="1917" height="867" alt="image" src="https://github.com/user-attachments/assets/0beb785a-a170-44eb-8b7b-7ba12ab288fb" />
+<img width="1917" height="862" alt="image" src="https://github.com/user-attachments/assets/a19af99b-62d8-448a-b2dc-64982f92711d" />
+
+
 ## 🚀 How to Run the Project Local
 1. Clone the repository:
 ```bash
    git clone [https://github.com/KadirKeless/itsm-service-desk-web.git](https://github.com/KadirKeless/itsm-service-desk-web.git)
-
-
-<img width="1918" height="866" alt="image" src="https://github.com/user-attachments/assets/4c64df8c-8f4f-4cc7-9a88-010a235affe3" />
-<img width="1918" height="867" alt="image" src="https://github.com/user-attachments/assets/dbb3dffe-edaf-407e-8aba-d005894a0b1f" />
-<img width="1917" height="867" alt="image" src="https://github.com/user-attachments/assets/131c8dce-8692-43a6-b403-220f0a93e275" />
-<img width="1918" height="866" alt="image" src="https://github.com/user-attachments/assets/a06790f5-47f6-45f3-b291-8b7b6b5a349e" />
-<img width="1917" height="862" alt="image" src="https://github.com/user-attachments/assets/f74b4a27-b75b-445d-a66b-74cc3bbccb34" />
