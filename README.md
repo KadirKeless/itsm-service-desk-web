@@ -25,9 +25,3 @@ To inspect the original desktop infrastructure that served as the initial bluepr
 <img width="1918" height="866" alt="image" src="https://github.com/user-attachments/assets/df48259b-caba-430f-ac70-a89d0dfaf2c5" />
 <img width="1917" height="867" alt="image" src="https://github.com/user-attachments/assets/0beb785a-a170-44eb-8b7b-7ba12ab288fb" />
 <img width="1917" height="862" alt="image" src="https://github.com/user-attachments/assets/a19af99b-62d8-448a-b2dc-64982f92711d" />
-
-
-## 🚀 How to Run the Project Local
-1. Clone the repository:
-```bash
-   git clone [https://github.com/KadirKeless/itsm-service-desk-web.git](https://github.com/KadirKeless/itsm-service-desk-web.git)
